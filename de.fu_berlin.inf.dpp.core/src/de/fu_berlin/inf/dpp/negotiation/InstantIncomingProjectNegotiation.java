@@ -27,7 +27,7 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
-import de.fu_berlin.inf.dpp.session.internal.ActivityQueuer;
+import de.fu_berlin.inf.dpp.session.internal.ProjectActivityQueuer;
 
 /**
  * Receive shared Projects and display them instant using a stream based
@@ -39,7 +39,7 @@ public class InstantIncomingProjectNegotiation extends
     private static final Logger log = Logger
         .getLogger(InstantIncomingProjectNegotiation.class);
 
-    private final ActivityQueuer activityQueuer = new ActivityQueuer();
+    private final ProjectActivityQueuer activityQueuer = new ProjectActivityQueuer();
 
     public InstantIncomingProjectNegotiation(
         final JID peer, //

@@ -28,7 +28,7 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
-import de.fu_berlin.inf.dpp.session.internal.ActivityQueuer;
+import de.fu_berlin.inf.dpp.session.internal.ProjectActivityQueuer;
 import de.fu_berlin.inf.dpp.util.CoreUtils;
 
 /**
@@ -41,7 +41,7 @@ public class ArchiveIncomingProjectNegotiation extends
     private static final Logger LOG = Logger
         .getLogger(ArchiveIncomingProjectNegotiation.class);
 
-    private final ActivityQueuer activityQueuer = new ActivityQueuer();
+    private final ProjectActivityQueuer activityQueuer = new ProjectActivityQueuer();
 
     public ArchiveIncomingProjectNegotiation(
         final JID peer, //
