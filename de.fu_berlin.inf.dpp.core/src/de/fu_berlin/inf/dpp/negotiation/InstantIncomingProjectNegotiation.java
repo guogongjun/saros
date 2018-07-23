@@ -27,6 +27,7 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
+import de.fu_berlin.inf.dpp.session.internal.ActivityQueuer;
 
 /**
  * Receive shared Projects and display them instant using a stream based
@@ -37,6 +38,8 @@ public class InstantIncomingProjectNegotiation extends
 
     private static final Logger log = Logger
         .getLogger(InstantIncomingProjectNegotiation.class);
+
+    private final ActivityQueuer activityQueuer = new ActivityQueuer();
 
     public InstantIncomingProjectNegotiation(
         final JID peer, //
@@ -55,6 +58,8 @@ public class InstantIncomingProjectNegotiation extends
             projectNegotiationData, sessionManager, session,
             fileReplacementInProgressObservable, workspace, checksumCache,
             connectionService, transmitter, receiver);
+
+        session.registerQueuingHandler(activityQueuer);
     }
 
     @Override
@@ -74,7 +79,7 @@ public class InstantIncomingProjectNegotiation extends
 
             session.addProjectMapping(projectID, project);
             /* TODO change queuing to resource based queuing */
-            session.enableQueuing(project);
+            activityQueuer.enableQueuing(project);
         }
 
         transmitter.send(ISarosSession.SESSION_CONNECTION_ID, getPeer(), //
@@ -91,6 +96,16 @@ public class InstantIncomingProjectNegotiation extends
 
         if (filesMissing > 0)
             receiveStream(monitor, filesMissing);
+    }
+
+    @Override
+    protected void cleanup(IProgressMonitor monitor,
+        Map<String, IProject> projectMapping) {
+
+        for (IProject project : projectMapping.values())
+            activityQueuer.disableQueuing(project);
+
+        super.cleanup(monitor, projectMapping);
     }
 
     private void receiveStream(IProgressMonitor monitor, int fileCount)

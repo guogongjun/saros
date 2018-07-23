@@ -62,6 +62,7 @@ import de.fu_berlin.inf.dpp.session.IActivityConsumer.Priority;
 import de.fu_berlin.inf.dpp.session.IActivityHandlerCallback;
 import de.fu_berlin.inf.dpp.session.IActivityListener;
 import de.fu_berlin.inf.dpp.session.IActivityProducer;
+import de.fu_berlin.inf.dpp.session.IActivityQueuer;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionContextFactory;
 import de.fu_berlin.inf.dpp.session.ISessionListener;
@@ -137,7 +138,7 @@ public final class SarosSession implements ISarosSession {
     private boolean started = false;
     private boolean stopped = false;
 
-    private final ActivityQueuer activityQueuer;
+    private IActivityQueuer activityQueuer;
     private boolean starting = false;
     private boolean stopping = false;
 
@@ -1039,13 +1040,12 @@ public final class SarosSession implements ISarosSession {
     }
 
     @Override
-    public void enableQueuing(IProject project) {
-        activityQueuer.enableQueuing(project);
+    public void registerQueuingHandler(IActivityQueuer activityQueuer) {
+        this.activityQueuer = activityQueuer;
     }
 
     @Override
-    public void disableQueuing(IProject project) {
-        activityQueuer.disableQueuing(project);
+    public void flushQueue() {
         // send us a dummy activity to ensure the queues get flushed
         sendActivity(Collections.singletonList(localUser), new NOPActivity(
             localUser, localUser, 0));
@@ -1059,7 +1059,13 @@ public final class SarosSession implements ISarosSession {
 
         this.sessionID = id;
         this.projectMapper = new SharedProjectMapper();
-        this.activityQueuer = new ActivityQueuer();
+        this.activityQueuer = new IActivityQueuer() {
+            /* default handler to prevent NPEs */
+            @Override
+            public List<IActivity> process(List<IActivity> activities) {
+                return activities;
+            }
+        };
         this.containerContext = context;
 
         // FIXME that should be passed in !

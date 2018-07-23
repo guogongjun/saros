@@ -28,6 +28,7 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
+import de.fu_berlin.inf.dpp.session.internal.ActivityQueuer;
 import de.fu_berlin.inf.dpp.util.CoreUtils;
 
 /**
@@ -39,6 +40,8 @@ public class ArchiveIncomingProjectNegotiation extends
 
     private static final Logger LOG = Logger
         .getLogger(ArchiveIncomingProjectNegotiation.class);
+
+    private final ActivityQueuer activityQueuer = new ActivityQueuer();
 
     public ArchiveIncomingProjectNegotiation(
         final JID peer, //
@@ -59,6 +62,8 @@ public class ArchiveIncomingProjectNegotiation extends
         super(peer, TransferType.ARCHIVE, negotiationID, projectNegotiationData,
             sessionManager, session, fileReplacementInProgressObservable,
             workspace, checksumCache, connectionService, transmitter, receiver);
+
+        session.registerQueuingHandler(activityQueuer);
     }
 
     @Override
@@ -77,14 +82,9 @@ public class ArchiveIncomingProjectNegotiation extends
 
             final String projectID = entry.getKey();
             final IProject project = entry.getValue();
-            /*
-             * TODO Move enable (and disable) queuing responsibility to
-             * SarosSession, since the second call relies on the first one, and
-             * the first one is never done without the second. (see also TODO in
-             * {@link AbstractIncomingProjectNegotiation#cleanup}).
-             */
+
             session.addProjectMapping(projectID, project);
-            session.enableQueuing(project);
+            activityQueuer.enableQueuing(project);
         }
 
         transmitter.send(ISarosSession.SESSION_CONNECTION_ID, getPeer(),
@@ -103,6 +103,16 @@ public class ArchiveIncomingProjectNegotiation extends
         if (filesMissing) {
             receiveAndUnpackArchive(projectMapping, transferListener, monitor);
         }
+    }
+
+    @Override
+    protected void cleanup(IProgressMonitor monitor,
+        Map<String, IProject> projectMapping) {
+
+        for (IProject project : projectMapping.values())
+            activityQueuer.disableQueuing(project);
+
+        super.cleanup(monitor, projectMapping);
     }
 
     /**

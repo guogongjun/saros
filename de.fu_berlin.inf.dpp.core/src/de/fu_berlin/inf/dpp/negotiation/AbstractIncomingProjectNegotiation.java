@@ -199,6 +199,7 @@ public abstract class AbstractIncomingProjectNegotiation extends ProjectNegotiat
         fileTransferManager.addFileTransferListener(transferListener);
     }
 
+
     /**
      * Handle the actual transfer.
      * The negotiation can be aborted by canceling the given monitor.
@@ -232,12 +233,7 @@ public abstract class AbstractIncomingProjectNegotiation extends ProjectNegotiat
         Map<String, IProject> projectMapping) {
         fileReplacementInProgressObservable.replacementDone();
 
-        /*
-         * TODO Move disable queuing responsibility to SarosSession (see todo
-         * in {@link ArchiveIncomingProjectNegotiation#transfer}).
-         */
-        for (IProject project : projectMapping.values())
-            session.disableQueuing(project);
+        session.flushQueue();
 
         if (fileTransferManager != null)
             fileTransferManager.removeFileTransferListener(transferListener);

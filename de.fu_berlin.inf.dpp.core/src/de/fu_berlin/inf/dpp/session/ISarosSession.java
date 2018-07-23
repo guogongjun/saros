@@ -470,30 +470,14 @@ public interface ISarosSession {
     public void changeColor(int colorID);
 
     /**
-     * FOR INTERNAL USE ONLY !
-     * <p>
-     * Starts queuing of incoming {@linkplain IResourceActivity project-related
-     * activities}, since they cannot be applied before their corresponding
-     * project is received and extracted.
-     * <p>
-     * That queuing relies on an existing project-to-projectID mapping (see
-     * {@link #addProjectMapping(String, IProject)}), otherwise incoming
-     * activities cannot be queued and will be lost.
-     * 
-     * @param project
-     *            the project for which project-related activities should be
-     *            queued
-     * 
-     * @see #disableQueuing
+     * Register a new Queuing handler, useful for Project Negotiation.
      */
-    public void enableQueuing(IProject project);
+    void registerQueuingHandler(IActivityQueuer activityQueuer);
 
     /**
-     * FOR INTERNAL USE ONLY !
-     * <p>
-     * Disables queuing for the given project and flushes all queued activities.
+     * Ensure queued activities get processed.
      */
-    public void disableQueuing(IProject project);
+    void flushQueue();
 
     /**
      * Returns the id of the current session.
@@ -516,4 +500,5 @@ public interface ISarosSession {
      *         either not available or does not exist
      */
     public <T> T getComponent(Class<T> key);
+
 }
