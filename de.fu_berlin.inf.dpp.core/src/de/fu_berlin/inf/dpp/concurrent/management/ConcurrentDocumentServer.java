@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.picocontainer.Startable;
@@ -179,6 +180,34 @@ public class ConcurrentDocumentServer implements Startable {
             + path);
 
         server.reset(path, user);
+    }
+
+    /**
+     * Prohibits adding a {@link User} to Jupiter Documents, for a Set of
+     * {@code SPath} and thereby prohibits to be part of Jupiter Activities in
+     * these documents. This prevents inconsistencies for files the user is yet
+     * unaware of.
+     *
+     * @param user
+     * @param resorcesMissing
+     */
+    public synchronized void addUserInNegotiation(final User user,
+        Set<SPath> resorcesMissing) {
+        server.addUserInNegotiation(user, resorcesMissing);
+    }
+
+    /**
+     * Allows the {@link User} to become part of an existing or future Jupiter
+     * Document. This method should be called right after opening a unmodifiable
+     * Filestream for sending to this User, to minimize inconsistency
+     * possibilities.
+     *
+     * @param user
+     * @param resource
+     */
+    public synchronized void userInNegotiationReceives(final User user,
+        SPath resource) {
+        server.userInNegotiationReceives(user, resource);
     }
 
     /**

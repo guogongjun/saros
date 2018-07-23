@@ -39,7 +39,6 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
 import de.fu_berlin.inf.dpp.session.User;
-import de.fu_berlin.inf.dpp.synchronize.StartHandle;
 
 /**
  * Share Projects to display them instant on client side using a stream based
@@ -65,7 +64,6 @@ public class InstantOutgoingProjectNegotiation extends
         }
     };
 
-    private List<StartHandle> stoppedUsers = null;
     private User remoteUser = null;
 
     public InstantOutgoingProjectNegotiation(final JID peer, //
@@ -107,8 +105,6 @@ public class InstantOutgoingProjectNegotiation extends
         List<FileList> fileLists) throws IOException,
         SarosCancellationException {
 
-        /* until further patch, lock the complete session */
-        stoppedUsers = stopUsers(monitor);
         sendAndAwaitActivityQueueingActivation(monitor);
 
         remoteUser = session.getUser(getPeer());
@@ -129,8 +125,16 @@ public class InstantOutgoingProjectNegotiation extends
                     CancelOption.NOTIFY_PEER);
         }
 
-        createTransferList(fileLists, fileCount);
-        transmittedFiles = new HashSet<SPath>(fileCount * 2);
+        if (fileCount > 0) {
+            createTransferList(fileLists, fileCount);
+            transmittedFiles = new HashSet<SPath>(fileCount * 2);
+
+            session.getConcurrentDocumentServer().addUserInNegotiation(
+                remoteUser, transferList);
+        }
+
+        session.userStartedQueuing(remoteUser);
+        session.userFinishedProjectNegotiation(remoteUser);
     }
 
     @Override
@@ -155,7 +159,7 @@ public class InstantOutgoingProjectNegotiation extends
 
         try {
             OutgoingStreamProtocol osp;
-            osp = new OutgoingStreamProtocol(out, session, monitor);
+            osp = new OutgoingStreamProtocol(out, session, remoteUser, monitor);
 
             /* id in description needed to bypass SendFileAction handler */
             String streamName = TRANSFER_ID + getID();
@@ -178,10 +182,6 @@ public class InstantOutgoingProjectNegotiation extends
     @Override
     protected void cleanup(IProgressMonitor monitor) {
         editorManager.removeSharedEditorListener(listener);
-        session.userStartedQueuing(remoteUser);
-
-        if (stoppedUsers != null)
-            startUsers(stoppedUsers);
 
         super.cleanup(monitor);
     }

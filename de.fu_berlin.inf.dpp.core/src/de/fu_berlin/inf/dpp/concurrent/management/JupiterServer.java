@@ -29,6 +29,7 @@ public class JupiterServer {
     private final HashMap<SPath, JupiterDocumentServer> concurrentDocuments = new HashMap<SPath, JupiterDocumentServer>();
 
     private final Set<User> currentClients = new HashSet<User>();
+    private final HashMap<User, Set<SPath>> userIsMissingRessource = new HashMap<User, Set<SPath>>();
 
     private final ISarosSession sarosSession;
 
@@ -53,6 +54,41 @@ public class JupiterServer {
         for (final JupiterDocumentServer server : concurrentDocuments.values()) {
             server.removeProxyClient(user);
         }
+    }
+
+    /**
+     * @see ConcurrentDocumentServer#addUserInNegotiation(User, Set)
+     */
+    public synchronized void addUserInNegotiation(final User user,
+        Set<SPath> resMissing) {
+        if (!userIsMissingRessource.containsKey(user))
+            userIsMissingRessource.put(user, new HashSet<SPath>(resMissing));
+        else
+            throw new IllegalArgumentException(
+                "Only one Negotiation per User simultaneously allowed!");
+
+        for (Map.Entry<SPath, JupiterDocumentServer> entry : concurrentDocuments
+            .entrySet()) {
+            if (!resMissing.contains(entry.getKey()))
+                entry.getValue().addProxyClient(user);
+        }
+    }
+
+    /**
+     * @see ConcurrentDocumentServer#userInNegotiationReceives(User, SPath)
+     */
+    public synchronized void userInNegotiationReceives(final User user,
+        SPath resource) {
+        if (!userIsMissingRessource.containsKey(user))
+            throw new IllegalArgumentException("User isn't in Negotiation!");
+
+        userIsMissingRessource.get(user).remove(resource);
+
+        if (concurrentDocuments.containsKey(resource))
+            concurrentDocuments.get(resource).addProxyClient(user);
+
+        if (userIsMissingRessource.get(user).isEmpty())
+            userIsMissingRessource.remove(user);
     }
 
     /**
@@ -82,6 +118,10 @@ public class JupiterServer {
                  * resources in question. Other clients that haven't accepted
                  * the Project yet will be added later.
                  */
+                if (userIsMissingRessource.containsKey(client)
+                    && userIsMissingRessource.get(client).contains(path))
+                    continue;
+
                 if (sarosSession.userHasProject(client, path.getProject())) {
                     docServer.addProxyClient(client);
                 }
