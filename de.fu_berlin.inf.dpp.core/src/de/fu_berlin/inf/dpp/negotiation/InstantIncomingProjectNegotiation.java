@@ -107,6 +107,9 @@ public class InstantIncomingProjectNegotiation extends
         activityQueuer = new ResourceActivityQueuer(files);
         session.registerQueuingHandler(activityQueuer);
 
+        /* start being part of the session */
+        addProjectsToSession(projectMapping);
+
         /* notify host about queuing */
         transmitter.send(ISarosSession.SESSION_CONNECTION_ID, getPeer(), //
             StartActivityQueuingResponse.PROVIDER //
@@ -122,7 +125,6 @@ public class InstantIncomingProjectNegotiation extends
     @Override
     protected void cleanup(IProgressMonitor monitor,
         Map<String, IProject> projectMapping) {
-
         stoppedLocalEditor.start();
 
         super.cleanup(monitor, projectMapping);

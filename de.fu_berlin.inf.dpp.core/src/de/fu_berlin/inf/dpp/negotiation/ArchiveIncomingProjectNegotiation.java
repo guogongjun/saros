@@ -108,6 +108,7 @@ public class ArchiveIncomingProjectNegotiation extends
     @Override
     protected void cleanup(IProgressMonitor monitor,
         Map<String, IProject> projectMapping) {
+        addProjectsToSession(projectMapping);
 
         for (IProject project : projectMapping.values())
             activityQueuer.disableQueuing(project);

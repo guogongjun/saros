@@ -141,35 +141,6 @@ public abstract class AbstractIncomingProjectNegotiation extends ProjectNegotiat
 
             checkCancellation(CancelOption.NOTIFY_PEER);
 
-            /*
-             * We are finished with the negotiation. Add all projects resources
-             * to the session.
-             */
-            for (Entry<String, IProject> entry : projectMapping.entrySet()) {
-
-                final String projectID = entry.getKey();
-                final IProject project = entry.getValue();
-
-                final boolean isPartialRemoteProject = getProjectNegotiationData(
-                    projectID).isPartial();
-
-                final FileList remoteFileList = getProjectNegotiationData(
-                    projectID).getFileList();
-
-                List<IResource> resources = null;
-
-                if (isPartialRemoteProject) {
-
-                    final List<String> paths = remoteFileList.getPaths();
-
-                    resources = new ArrayList<IResource>(paths.size());
-
-                    for (final String path : paths)
-                        resources.add(getResource(project, path));
-                }
-
-                session.addSharedResources(project, projectID, resources);
-            }
         } catch (Exception e) {
             exception = e;
         } finally {
@@ -177,6 +148,40 @@ public abstract class AbstractIncomingProjectNegotiation extends ProjectNegotiat
         }
 
         return terminate(exception);
+    }
+
+    /**
+     * Adds all projects and resources to the session. This notifies all
+     * listener about the completed negotiation.
+     *
+     * @param projectMapping
+     */
+    void addProjectsToSession(Map<String, IProject> projectMapping) {
+        for (Entry<String, IProject> entry : projectMapping.entrySet()) {
+
+            final String projectID = entry.getKey();
+            final IProject project = entry.getValue();
+
+            final boolean isPartialRemoteProject = getProjectNegotiationData(
+                projectID).isPartial();
+
+            final FileList remoteFileList = getProjectNegotiationData(
+                projectID).getFileList();
+
+            List<IResource> resources = null;
+
+            if (isPartialRemoteProject) {
+
+                final List<String> paths = remoteFileList.getPaths();
+
+                resources = new ArrayList<IResource>(paths.size());
+
+                for (final String path : paths)
+                    resources.add(getResource(project, path));
+            }
+
+            session.addSharedResources(project, projectID, resources);
+        }
     }
 
     /**
