@@ -2,15 +2,18 @@ package de.fu_berlin.inf.dpp.negotiation;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smackx.filetransfer.IncomingFileTransfer;
 
+import de.fu_berlin.inf.dpp.activities.SPath;
 import de.fu_berlin.inf.dpp.communication.extensions.StartActivityQueuingResponse;
 import de.fu_berlin.inf.dpp.exceptions.LocalCancellationException;
 import de.fu_berlin.inf.dpp.exceptions.SarosCancellationException;
@@ -27,7 +30,8 @@ import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
-import de.fu_berlin.inf.dpp.session.internal.ProjectActivityQueuer;
+import de.fu_berlin.inf.dpp.session.internal.ResourceActivityQueuer;
+import de.fu_berlin.inf.dpp.synchronize.StartHandle;
 
 /**
  * Receive shared Projects and display them instant using a stream based
@@ -39,7 +43,8 @@ public class InstantIncomingProjectNegotiation extends
     private static final Logger log = Logger
         .getLogger(InstantIncomingProjectNegotiation.class);
 
-    private final ProjectActivityQueuer activityQueuer = new ProjectActivityQueuer();
+    private ResourceActivityQueuer activityQueuer;
+    private StartHandle stoppedLocalEditor;
 
     public InstantIncomingProjectNegotiation(
         final JID peer, //
@@ -58,8 +63,6 @@ public class InstantIncomingProjectNegotiation extends
             projectNegotiationData, sessionManager, session,
             fileReplacementInProgressObservable, workspace, checksumCache,
             connectionService, transmitter, receiver);
-
-        session.registerQueuingHandler(activityQueuer);
     }
 
     @Override
@@ -67,7 +70,13 @@ public class InstantIncomingProjectNegotiation extends
         Map<String, IProject> projectMapping, List<FileList> missingFiles)
         throws IOException, SarosCancellationException {
 
-        awaitActivityQueueingActivation(monitor);
+        try {
+            stoppedLocalEditor = session.getStopManager().stop(
+                session.getLocalUser(), "Read-only while negotiation!");
+        } catch (InterruptedException e) {
+            log.error("while blocking local editor", e);
+            Thread.currentThread().interrupt();
+        }
 
         /*
          * the user who sends this ProjectNegotiation is now responsible for the
@@ -78,21 +87,33 @@ public class InstantIncomingProjectNegotiation extends
             final IProject project = entry.getValue();
 
             session.addProjectMapping(projectID, project);
-            /* TODO change queuing to resource based queuing */
-            activityQueuer.enableQueuing(project);
         }
 
+        /* generate file lists */
+        int filesMissing = 0;
+        for (FileList list : missingFiles)
+            filesMissing += list.getPaths().size();
+
+        Set<SPath> files = new HashSet<SPath>(filesMissing * 2);
+        for (final FileList list : missingFiles) {
+            IProject project = session.getProject(list.getProjectID());
+            for (String file : list.getPaths()) {
+                files.add(new SPath(project.getFile(file)));
+            }
+        }
+
+        /* register resource based queuing */
+        awaitActivityQueueingActivation(monitor);
+        activityQueuer = new ResourceActivityQueuer(files);
+        session.registerQueuingHandler(activityQueuer);
+
+        /* notify host about queuing */
         transmitter.send(ISarosSession.SESSION_CONNECTION_ID, getPeer(), //
             StartActivityQueuingResponse.PROVIDER //
                 .create( //
                 new StartActivityQueuingResponse(getSessionID(), getID())));
 
         checkCancellation(CancelOption.NOTIFY_PEER);
-
-        /* only get files, if something is missing */
-        int filesMissing = 0;
-        for (FileList list : missingFiles)
-            filesMissing += list.getPaths().size();
 
         if (filesMissing > 0)
             receiveStream(monitor, filesMissing);
@@ -102,8 +123,7 @@ public class InstantIncomingProjectNegotiation extends
     protected void cleanup(IProgressMonitor monitor,
         Map<String, IProject> projectMapping) {
 
-        for (IProject project : projectMapping.values())
-            activityQueuer.disableQueuing(project);
+        stoppedLocalEditor.start();
 
         super.cleanup(monitor, projectMapping);
     }
@@ -127,7 +147,7 @@ public class InstantIncomingProjectNegotiation extends
 
             IncomingStreamProtocol isp;
             isp = new IncomingStreamProtocol(in, session, monitor);
-            isp.receiveStream();
+            isp.receiveStream(activityQueuer);
         } catch (XMPPException e) {
             throw new LocalCancellationException(e.getMessage(),
                 CancelOption.NOTIFY_PEER);

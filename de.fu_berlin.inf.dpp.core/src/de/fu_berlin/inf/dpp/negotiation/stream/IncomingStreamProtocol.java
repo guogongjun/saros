@@ -8,12 +8,14 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.BoundedInputStream;
 import org.apache.log4j.Logger;
 
+import de.fu_berlin.inf.dpp.activities.SPath;
 import de.fu_berlin.inf.dpp.exceptions.LocalCancellationException;
 import de.fu_berlin.inf.dpp.filesystem.FileSystem;
 import de.fu_berlin.inf.dpp.filesystem.IFile;
 import de.fu_berlin.inf.dpp.monitoring.IProgressMonitor;
 import de.fu_berlin.inf.dpp.negotiation.NegotiationTools.CancelOption;
 import de.fu_berlin.inf.dpp.session.ISarosSession;
+import de.fu_berlin.inf.dpp.session.internal.ResourceActivityQueuer;
 
 /**
  * Implements Stream processing in {@link AbstractStreamProtocol} format.
@@ -34,13 +36,14 @@ public class IncomingStreamProtocol extends AbstractStreamProtocol {
     /**
      * Receive Files from {@code InputStream in} via in
      * {@link AbstractStreamProtocol} defined protocol.
-     * 
+     *
      * @throws IOException
      *             if any file or stream operation fails
      * @throws LocalCancellationException
      *             on local user cancellation
      */
-    public void receiveStream() throws IOException, LocalCancellationException {
+    public void receiveStream(ResourceActivityQueuer activityQueuer)
+        throws IOException, LocalCancellationException {
         BoundedInputStream fileIn = null;
         try {
             while (true) {
@@ -77,6 +80,7 @@ public class IncomingStreamProtocol extends AbstractStreamProtocol {
                         "User canceled transmission", CancelOption.NOTIFY_PEER);
                 }
 
+                activityQueuer.disableQueuing(new SPath(file));
                 monitor.worked(1);
             }
         } finally {
