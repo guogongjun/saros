@@ -387,26 +387,16 @@ public interface ISarosSession {
   public void changeColor(int colorID);
 
   /**
-   * FOR INTERNAL USE ONLY !
+   * Register a queue handler for an incoming project negotiation. Should be called only once or
+   * always with the same <code>activityQueue</code>, otherwise the caller is responsible for making
+   * sure that the handler can be safely changed (empty old queue).
    *
-   * <p>Starts queuing of incoming {@linkplain IResourceActivity project-related activities}, since
-   * they cannot be applied before their corresponding project is received and extracted.
-   *
-   * <p>That queuing relies on an existing project-to-projectID mapping (see {@link
-   * #addProjectMapping(String, IProject)}), otherwise incoming activities cannot be queued and will
-   * be lost.
-   *
-   * @param project the project for which project-related activities should be queued
-   * @see #disableQueuing
+   * @param activityQueuer queue used by incoming project negotiation
    */
-  public void enableQueuing(IProject project);
+  public void registerActivityQueueHandler(IActivityQueuer activityQueuer);
 
-  /**
-   * FOR INTERNAL USE ONLY !
-   *
-   * <p>Disables queuing for the given project and flushes all queued activities.
-   */
-  public void disableQueuing(IProject project);
+  /** Ensure queued activities get processed. */
+  public void flushQueue();
 
   /**
    * Returns the id of the current session.
