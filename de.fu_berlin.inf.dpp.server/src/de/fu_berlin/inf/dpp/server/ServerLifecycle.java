@@ -9,6 +9,8 @@ import de.fu_berlin.inf.dpp.context.IContextFactory;
 import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import de.fu_berlin.inf.dpp.net.xmpp.JID;
+import de.fu_berlin.inf.dpp.server.console.InviteCommand;
+import de.fu_berlin.inf.dpp.server.console.ServerConsole;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
 import de.fu_berlin.inf.dpp.session.SessionEndReason;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import org.apache.log4j.Logger;
 public class ServerLifecycle extends AbstractContextLifecycle {
 
   private static final Logger log = Logger.getLogger(ServerLifecycle.class);
+  public ServerConsole console = null;
 
   @Override
   protected Collection<IContextFactory> additionalContextFactories() {
@@ -31,6 +34,7 @@ public class ServerLifecycle extends AbstractContextLifecycle {
   @Override
   protected void initializeContext(final ContainerContext context) {
     connectToXMPPServer(context);
+    initConsole(context);
     context
         .getComponent(ISarosSessionManager.class)
         .startSession(new HashMap<IProject, List<IResource>>());
@@ -73,5 +77,13 @@ public class ServerLifecycle extends AbstractContextLifecycle {
 
     ConnectionHandler connectionHandler = context.getComponent(ConnectionHandler.class);
     connectionHandler.connect(account, false);
+  }
+
+  public void initConsole(final ContainerContext context) {
+    if (console == null) {
+      return;
+    }
+
+    console.registerCommand(new InviteCommand(context.getComponent(ISarosSessionManager.class)));
   }
 }

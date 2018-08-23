@@ -22,17 +22,14 @@ public class SarosServer {
     lifecycle = new ServerLifecycle();
   }
 
-  public void start() {
+  public void start(ServerConsole console) {
 
     // Logging
     URL log4jProperties = SarosServer.class.getResource(LOGGING_CONFIG_FILE);
     PropertyConfigurator.configure(log4jProperties);
 
+    lifecycle.console = console;
     lifecycle.start();
-  }
-
-  public void initConsole(ServerConsole console) {
-    // no commands (yet) to register
   }
 
   public void stop() {
@@ -47,9 +44,6 @@ public class SarosServer {
   public static void main(String[] args) {
     final SarosServer server = new SarosServer();
 
-    LOG.info("Starting server...");
-    server.start();
-
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread(
@@ -61,10 +55,13 @@ public class SarosServer {
                   }
                 }));
 
+    LOG.info("Starting server...");
     if (ServerConfig.isInteractive()) {
       ServerConsole console = new ServerConsole(System.in, System.out);
-      server.initConsole(console);
+      server.start(console);
       console.run();
+    } else {
+      server.start(null);
     }
   }
 }
