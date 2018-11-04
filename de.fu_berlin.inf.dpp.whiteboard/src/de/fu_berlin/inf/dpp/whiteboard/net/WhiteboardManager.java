@@ -28,6 +28,8 @@ import de.fu_berlin.inf.dpp.whiteboard.sxe.ISXEMessageHandler;
 import de.fu_berlin.inf.dpp.whiteboard.sxe.SXEController;
 import de.fu_berlin.inf.dpp.whiteboard.sxe.SXEController.State;
 import de.fu_berlin.inf.dpp.whiteboard.sxe.net.SXEOutgoingSynchronizationProcess;
+import de.fu_berlin.inf.dpp.whiteboard.ui.browser.BrowserSXEBridge;
+import de.fu_berlin.inf.dpp.whiteboard.ui.browser.IWhiteboardBrowser;
 
 /**
  * This class makes the interconnection between Saros and SXE.
@@ -50,6 +52,9 @@ public class WhiteboardManager {
     private static final WhiteboardManager INSTANCE = new WhiteboardManager();
 
     protected SXEController controller;
+
+    // this bridge will connect the sxe controller with the browser
+    private BrowserSXEBridge bridge;
 
     /**
      * Only used by the client
@@ -125,7 +130,12 @@ public class WhiteboardManager {
              * dispose because we do not want to be invited when not in a Saros
              * session and the transmitter will be recreated on start
              */
-            dispose();
+            controller.clear();
+            if (bridge != null) {
+                bridge.dispose();
+            }
+            if (sxeTransmitter != null)
+                sxeTransmitter.dispose();
         }
     };
 
@@ -226,10 +236,21 @@ public class WhiteboardManager {
         return controller;
     }
 
-    private void dispose() {
-        controller.clear();
-        if (sxeTransmitter != null)
-            sxeTransmitter.dispose();
+    /**
+     * Instantiates the bridge with the given browser.
+     * <p>
+     * note: it would be best to call this function after the browser has fully
+     * loaded the document to guarantee proper browser function initialisation
+     * 
+     * @param browser
+     *            the browser created in the view which displays the whiteboard
+     *            html document
+     */
+    public void createBridge(IWhiteboardBrowser browser) {
+        if (bridge != null) {
+            bridge.dispose();
+        }
+        bridge = new BrowserSXEBridge(controller, browser);
+        bridge.init();
     }
-
 }
